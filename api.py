@@ -21,6 +21,6 @@ tabel_data = {
 }
 
 df = pd.DataFrame(tabel_data)
-df.to_csv("weerstation.csv", index=False, sep=";")
+df.to_csv("csv/weerstation.csv", index=False, sep=";")
 
 print("File saved")

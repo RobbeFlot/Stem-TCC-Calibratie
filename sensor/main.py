@@ -129,7 +129,7 @@ PM10 = 0
 
 # ===== GPS UITLEZEN =====
 # Deze functie verwerkt alle GPS-gegevens die op dat moment in de UART-buffer staan.
-# tijdGPS blijft bewust in UTC; lengtegraad, breedtegraad en hoogte bewaren de laatste fix.
+# tijdGPS wordt hier opgeslagen in het formaat YYYY-MM-DDTHH:MM (bijv. 2026-09-28T23:00).
 def meetGPS():
     global tijdGPS, breedtegraad, lengtegraad, hoogte
 
@@ -146,19 +146,18 @@ def meetGPS():
                 stat = my_gps.update(chr(byte))
 
                 if stat is not None:
-                    # GPS-data kunnen ook binnenkomen zonder geldige positiebepaling.
-                    # De GPS-tijd mag dan wel worden bijgewerkt en blijft in UTC.
-                    tijdGPS = (
-                        str(my_gps.date[2]) + ";" +
-                        str(my_gps.date[1]) + ";" +
-                        str(my_gps.date[0]) + ";" +
-                        str(my_gps.timestamp[0]) + ";" +
-                        str(my_gps.timestamp[1]) + ";" +
-                        str(int(my_gps.timestamp[2]))
+                    # Converteer GPS-datum en tijd naar het gewenste formaat: 2026-09-28T23:00
+                    jaar_val = int(my_gps.date[2]) + 2000
+                    maand_val = int(my_gps.date[1])
+                    dag_val = int(my_gps.date[0])
+                    uur_val = int(my_gps.timestamp[0])
+                    minuut_val = int(my_gps.timestamp[1])
+
+                    tijdGPS = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}".format(
+                        jaar_val, maand_val, dag_val, uur_val, minuut_val
                     )
 
                     # Positie en hoogte alleen overschrijven bij een geldige GGA-fix.
-                    # Zo gebruiken we coördinaten en hoogte uit dezelfde geldige GPS-zin.
                     try:
                         if stat in ("GPGGA", "GLGGA", "GNGGA") and my_gps.fix_stat > 0:
                             breedtegraad = my_gps.latitude_string()
@@ -166,8 +165,6 @@ def meetGPS():
                             hoogte = my_gps.altitude
                             nieuwe_fix = True
                     except Exception:
-                        # Als de fixstatus niet betrouwbaar kan worden gelezen,
-                        # beschouwen we dit niet als een nieuwe geldige positie.
                         pass
 
     except Exception as e:
@@ -176,11 +173,7 @@ def meetGPS():
     return nieuwe_fix
 
 
-
-
 # ===== BME680 UITLEZEN =====
-# De BME680 levert temperatuur, relatieve vochtigheid, luchtdruk en gasweerstand.
-# De gasweerstand wordt gedeeld door 1000 zodat gas in kOhm wordt bewaard en getoond.
 def readBME():
     global temp, hum, pres, gas
 
@@ -188,23 +181,16 @@ def readBME():
         return False
 
     try:
-        # ===== KALIBRATIEWAARDEN (y = a * x + b) =====
-        # Pas onderstaande a- en b-waarden aan op basis van jouw kalibratieresultaten.
-        a_temp = 1.0
-        b_temp = 0.0
-        a_hum = 1.0
-        b_hum = 0.0
-        a_pres = 1.0
-        b_pres = 0.0
+        # Eventuele kalibratiewaarden (y = a * x + b)
+        a_temp, b_temp = 1.0, 0.0
+        a_hum, b_hum   = 1.0, 0.0
+        a_pres, b_pres = 1.0, 0.0
 
-        # Pas de kalibratie toe op de ruwe sensormetingen.
         nieuwe_temp = (bme.temperature * a_temp) + b_temp
         nieuwe_hum = (bme.humidity * a_hum) + b_hum
         nieuwe_pres = (bme.pressure * a_pres) + b_pres
-        
         nieuwe_gas = bme.gas / 1000
 
-        # Pas de actuele waarden pas aan wanneer de volledige meting gelukt is.
         temp = nieuwe_temp
         hum = nieuwe_hum
         pres = nieuwe_pres
@@ -218,7 +204,6 @@ def readBME():
 
 
 # ===== SCD4X UITLEZEN =====
-# Van de SCD4X wordt alleen de CO2-meting gebruikt.
 def readSCD():
     global co2
 
@@ -227,8 +212,6 @@ def readSCD():
 
     try:
         nieuwe_co2 = sensor.co2
-
-        # Bewaar de nieuwe waarde alleen wanneer de uitlezing gelukt is.
         co2 = nieuwe_co2
         return True
 
@@ -238,8 +221,6 @@ def readSCD():
 
 
 # ===== SDS011 UITLEZEN =====
-# De SDS011 meet PM2.5 en PM10 in ug/m3.
-# De meest recente waarden worden bewaard voor het OLED en voor de minuutmediaan.
 def readDust():
     global PM25, PM10
 
@@ -251,7 +232,6 @@ def readDust():
         nieuwe_PM25 = dust_sensor.pm25
         nieuwe_PM10 = dust_sensor.pm10
 
-        # Bewaar beide waarden alleen wanneer de uitlezing gelukt is.
         PM25 = nieuwe_PM25
         PM10 = nieuwe_PM10
 
@@ -263,12 +243,9 @@ def readDust():
 
 
 # ===== MEDIAAN =====
-# De mediaan vermindert de invloed van korte pieken en toevallige uitschieters.
-# Bij een even aantal waarden wordt het gemiddelde van de twee middelste waarden genomen.
 def median(waarden):
     n = len(waarden)
 
-    # Geen geldige metingen in deze minuut: schrijf 0 zodat dit herkenbaar blijft in DATA.
     if n == 0:
         return 0
 
@@ -285,8 +262,6 @@ def median(waarden):
 
 
 # ===== DATUMHULPFUNCTIES =====
-# Voor de lokale OLED-tijd moet ook de datum correct doorschuiven wanneer UTC+2
-# over middernacht gaat. Deze hulpfuncties houden rekening met schrikkeljaren.
 def is_schrikkeljaar(jaar):
     return jaar % 4 == 0 and (jaar % 100 != 0 or jaar % 400 == 0)
 
@@ -300,24 +275,22 @@ def dagen_in_maand(maand, jaar):
     return dagen[maand - 1]
 
 
-# ===== GPS-TIJD VOOR HET OLED =====
-# tijdGPS zelf wordt niet gewijzigd en blijft dus UTC voor DATA.
-# Alleen voor het OLED maken we hier een lokale kopie met UTC_OFFSET_UREN erbij.
+# ===== GPS-TIJD VOOR HET OLED (Aangepast op YYYY-MM-DDTHH:MM) =====
 def gps_tekst_lokaal():
-    if tijdGPS == 0:
+    if tijdGPS == 0 or tijdGPS == "0":
         return "Datum:--/--/----", "Tijd: --:--"
 
     try:
-        delen = str(tijdGPS).split(";")
+        # Splits het nieuwe formaat "2026-09-28T23:00"
+        s_datum, s_tijd = str(tijdGPS).split("T")
+        jaar_str, maand_str, dag_str = s_datum.split("-")
+        uur_str, minuut_str = s_tijd.split(":")
 
-        if len(delen) < 5:
-            return "Datum:--/--/----", "Tijd: --:--"
-
-        jaar = int(delen[0]) + 2000
-        maand = int(delen[1])
-        dag = int(delen[2])
-        uur = int(delen[3])
-        minuut = int(delen[4])
+        jaar = int(jaar_str)
+        maand = int(maand_str)
+        dag = int(dag_str)
+        uur = int(uur_str)
+        minuut = int(minuut_str)
 
         if maand < 1 or maand > 12 or dag < 1:
             return "Datum:--/--/----", "Tijd: --:--"
@@ -347,8 +320,6 @@ def gps_tekst_lokaal():
 
 
 # ===== OLED-SCHERMEN =====
-# Per meetmoment wordt precies één scherm getoond. Het scherm blijft daarna staan
-# tot de volgende meting, zodat het OLED de 10-secondenplanning niet blokkeert.
 def toon_scherm(schermnummer, laatste_opslag, volgende_opslag):
     if oled is None and not init_oled():
         return
@@ -398,14 +369,10 @@ def toon_scherm(schermnummer, laatste_opslag, volgende_opslag):
         oled.show()
 
     except Exception as e:
-        # Een tijdelijk OLED-probleem mag de datalogging niet stoppen.
         print("OLED-fout:", e)
 
 
 # ===== DATA WEGSCHRIJVEN =====
-# Elke minuut wordt per sensor de mediaan van maximaal zes geldige 10-secondenmetingen opgeslagen.
-# GPS-coördinaten worden alleen bewaard als er in die minuut minstens één geldige fix was.
-# Zonder geldige fix gedurende de volledige minuut worden lengtegraad, breedtegraad en hoogte 0.
 def schrijf_data(
     co2List,
     pressList,
@@ -416,12 +383,8 @@ def schrijf_data(
     PM10List,
     hoogteList
 ):
-    # De eerste kolom blijft, zoals in de oorspronkelijke code, de looptijd in minuten.
     tijd = time.ticks_ms() / 1000 / 60
 
-    # hoogteList bevat alleen hoogtes van geldige GPS-fixes uit de lopende minuut.
-    # Bij minstens één fix bewaren we de laatste geldige positie en de mediaan van de hoogtes.
-    # Bij een volledige minuut zonder fix schrijven we 0, zodat GPS-uitval herkenbaar blijft.
     if len(hoogteList) > 0:
         lengtegraad_data = lengtegraad
         breedtegraad_data = breedtegraad
@@ -448,9 +411,6 @@ def schrijf_data(
             str(constants.sensor_id) + "\n"
         )
 
-    # De mediaan van de luchtdruk wordt aan de SCD4X doorgegeven
-    # zodat de CO2-meting drukgecompenseerd kan worden.
-    # Een fout hierbij mag de verdere datalogging niet stoppen.
     if len(pressList) > 0:
         try:
             druk = int(median(pressList))
@@ -463,11 +423,7 @@ def schrijf_data(
 
 
 # ===== HOOFDPROGRAMMA =====
-# De planning gebruikt vaste klokmomenten: 0, 10, 20, 30, 40 en 50 seconden.
-# Daardoor wordt de duur van een sensormeting niet telkens boven op het interval geteld.
 def main():
-    # Probeer alle sensoren en het OLED-scherm afzonderlijk te starten.
-    # Een onderdeel dat hier niet reageert, wordt later automatisch opnieuw geprobeerd.
     init_scd()
     init_bme()
     init_dust()
@@ -482,8 +438,6 @@ def main():
     PM10List = []
     hoogteList = []
 
-    # Probeer onmiddellijk bij het opstarten GPS-data te lezen.
-    # Als er nog geen fix is, wordt de GPS daarna automatisch elke 10 seconden opnieuw gelezen.
     meetGPS()
 
     starttijd = time.ticks_ms()
@@ -497,8 +451,6 @@ def main():
     while True:
         nu = time.ticks_ms()
 
-        # Eerst de voorbije minuut opslaan wanneer de 60-secondenmarkering bereikt is.
-        # Zo behoort de meting op exact 60 s al tot de volgende minuut.
         if time.ticks_diff(nu, volgende_opslag) >= 0:
             if aantal_metingen > 0:
                 schrijf_data(
@@ -512,7 +464,6 @@ def main():
                     hoogteList
                 )
 
-            # Na de opslag starten alle lijsten opnieuw leeg voor de volgende minuut.
             co2List = []
             pressList = []
             tempList = []
@@ -529,19 +480,13 @@ def main():
                 OPSLAGINTERVAL_MS
             )
 
-        # Een nieuwe meetronde start op vaste tijdstippen om de 10 seconden.
-        # Sensoren die bij het opstarten ontbraken, worden hier automatisch opnieuw geprobeerd.
         if time.ticks_diff(nu, volgende_meting) >= 0:
             bme_ok = readBME()
             scd_ok = readSCD()
             dust_ok = readDust()
 
-            # GPS wordt eveneens om de 10 seconden verwerkt.
-            # Alleen een nieuwe geldige fix wordt gebruikt voor de hoogte-mediaan.
             nieuwe_gps_fix = meetGPS()
 
-            # Alleen werkelijk geslaagde sensormetingen gaan naar de minuutlijsten.
-            # Zo wordt bij een tijdelijke sensorfout geen oude waarde opnieuw opgeslagen.
             if scd_ok:
                 co2List.append(co2)
 
@@ -563,8 +508,6 @@ def main():
 
             aantal_metingen += 1
 
-            # Toon na iedere meting het volgende OLED-scherm.
-            # Elk scherm blijft ongeveer 10 seconden zichtbaar tot de volgende meetronde.
             toon_scherm(
                 schermnummer,
                 laatste_opslag,
@@ -573,20 +516,15 @@ def main():
 
             schermnummer = (schermnummer + 1) % 3
 
-            # Tel 10 seconden bij het geplande tijdstip op, niet bij het einde van de meting.
-            # Daardoor blijft de planning zo dicht mogelijk bij 0,10,20,30,40,50 s.
             volgende_meting = time.ticks_add(
                 volgende_meting,
                 MEETINTERVAL_MS
             )
 
-        # Een zeer korte slaap voorkomt dat de ESP32 nutteloos in een lege lus blijft draaien.
         time.sleep_ms(20)
 
 
 # ===== PROGRAMMA STARTEN =====
-# Eventuele onverwachte fouten worden in error_log.txt bewaard.
-# Daarna wordt de fout opnieuw opgegooid zodat ze ook zichtbaar blijft in Thonny.
 try:
     main()
 
