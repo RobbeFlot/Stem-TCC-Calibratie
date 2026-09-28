@@ -182,6 +182,8 @@ def readBME():
 
     try:
         # Eventuele kalibratiewaarden (y = a * x + b)
+        # Voor een eventuele hercalibratie moeten de a waarde 1.0 worden en de b waarde 0.0, hierna pas kan je de nieuwe
+        # calibratiegegevens meten!
         a_temp, b_temp = 1.0, 0.0
         a_hum, b_hum   = 1.0, 0.0
         a_pres, b_pres = 1.0, 0.0
