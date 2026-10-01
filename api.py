@@ -3,8 +3,8 @@ import pandas as pd
 
 station_ids = "11127"
 parameters = "TL,RF,P"
-start = "2026-09-28T00:00"
-end = "2026-09-28T23:00"
+start = "2026-09-29T16:00"
+end = "2026-09-29T21:30"
 
 url = f"https://dataset.api.hub.geosphere.at/v1/station/historical/tawes-v1-10min?station_ids={station_ids}&parameters={parameters}&start={start}&end={end}"
 response = requests.get(url)
