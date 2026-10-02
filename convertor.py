@@ -14,16 +14,6 @@ df["TijdGPS"] = pd.to_datetime(
     errors="coerce"
 )
 
-#eerste_geldige_rij = df["TijdGPS"].first_valid_index()
-
-#if eerste_geldige_rij is not None:
-#    referentietijd = df.loc[eerste_geldige_rij, "TijdGPS"]
-#    referentie_tijd = df.loc[eerste_geldige_rij, "Tijd"]
-#
-#    for rij in df.index[df["TijdGPS"].isna()]:
-#        verschil_minuten = float(df.loc[rij, "Tijd"]) - float(referentie_tijd)
-#        df.loc[rij, "TijdGPS"] = (referentietijd + timedelta(minutes=verschil_minuten)).round("s")
-
 df["TijdGPS"] = (
     df["TijdGPS"]
     .dt.tz_localize("UTC")
