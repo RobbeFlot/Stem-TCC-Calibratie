@@ -1,4 +1,5 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 
 def regressie(xValues : list, yValues : list) -> tuple[float, float]:
     #checking if the x and y list have the same amount of values!
@@ -21,9 +22,6 @@ def regressie(xValues : list, yValues : list) -> tuple[float, float]:
         return a, b
     except ZeroDivisionError:
         print("All x values are equal! --> ZeroDevisionError")
-
-def calculateCalibrationValues(reference : tuple[float, float], birdValues : tuple[float, float]) -> tuple[float, float]:
-    return (birdValues[0] / reference[0], birdValues[1] / reference[1])    # (a, b)
 
 def getData(WEATHERSTATIONFILE : str, BIRDFILE : str) -> dict[str, list]:
     #getting the files
@@ -52,8 +50,8 @@ def getData(WEATHERSTATIONFILE : str, BIRDFILE : str) -> dict[str, list]:
 
 #Wich bird and wich value
 BIRDFILE = "5"
-SENSORB = "TempBME"
-SENSORW = "temperatuur_tl"
+SENSORB = "RHBME"
+SENSORW = "luchtvochtigheid_rf"
 data = getData("weerstation", f"{BIRDFILE}")
 
 #getting the y values (1-x, with x = the amount of data)
@@ -61,10 +59,17 @@ yValues = []
 for i in range(len(data[SENSORW])):
     yValues.append(i)
 
-#calculating regression values
-regressieWeerstation = regressie(data[SENSORW], yValues)
-regressieVogels = regressie(data[SENSORB], yValues)
+plt.scatter(yValues, data[SENSORW])
+plt.scatter(yValues, data[SENSORB])
 
-#calculating a & b and printing it
-result = calculateCalibrationValues(regressieWeerstation, regressieVogels)
-print(result)
+#calculating regression values
+_regressie = regressie(data[SENSORB], data[SENSORW])
+res = []
+newData = []
+for i in range(len(yValues)):
+    res.append(_regressie[0] * yValues[i] + _regressie[1])
+plt.plot(yValues, res)
+for i in range(len(yValues)):
+    newData.append(_regressie[0] *data[SENSORB][i] + _regressie[1])
+plt.scatter(yValues, newData)
+plt.show()

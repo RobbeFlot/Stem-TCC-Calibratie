@@ -1,7 +1,7 @@
 import pandas as pd
 from datetime import timedelta
 
-FILENAME = input("Enter file number")
+FILENAME = input("Enter file number: ")
 PATH = f"data/{FILENAME}.txt"
 
 df = pd.read_csv(f"{PATH}")
