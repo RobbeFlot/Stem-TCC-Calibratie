@@ -50,26 +50,33 @@ def getData(WEATHERSTATIONFILE : str, BIRDFILE : str) -> dict[str, list]:
 
 #Wich bird and wich value
 BIRDFILE = "5"
-SENSORB = "RHBME"
-SENSORW = "luchtvochtigheid_rf"
+SENSORB = "TempBME"
+SENSORW = "temperatuur_tl"
 data = getData("weerstation", f"{BIRDFILE}")
+
+HIKEDATA = pd.read_csv("csv/hikedata.csv")
 
 #getting the y values (1-x, with x = the amount of data)
 yValues = []
-for i in range(len(data[SENSORW])):
+for i in range(len(HIKEDATA["TempBME"])):
     yValues.append(i)
 
-plt.scatter(yValues, data[SENSORW])
-plt.scatter(yValues, data[SENSORB])
+#plt.scatter(yValues, data[SENSORW])
+#plt.scatter(yValues, data[SENSORB])
 
 #calculating regression values
 _regressie = regressie(data[SENSORB], data[SENSORW])
-res = []
+#res = []
 newData = []
-for i in range(len(yValues)):
-    res.append(_regressie[0] * yValues[i] + _regressie[1])
-plt.plot(yValues, res)
-for i in range(len(yValues)):
-    newData.append(_regressie[0] *data[SENSORB][i] + _regressie[1])
-plt.scatter(yValues, newData)
+#for i in range(len(yValues)):
+#    res.append(_regressie[0] * yValues[i] + _regressie[1])
+#plt.plot(yValues, res)
+for i in range(len(HIKEDATA["TempBME"])):
+    newData.append(_regressie[0] * HIKEDATA["TempBME"][i] + _regressie[1])
+plt.xlabel("Measurement")
+plt.ylabel("Temperature (°C)")
+plt.title("Measured and calibrated temperature from the hike")
+plt.scatter(yValues, HIKEDATA["TempBME"], s=1)
+plt.scatter(yValues, newData, s=1)
+
 plt.show()
