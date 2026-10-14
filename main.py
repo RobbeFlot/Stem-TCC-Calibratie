@@ -48,25 +48,27 @@ def getData(WEATHERSTATIONFILE : str, BIRDFILE : str) -> dict[str, list]:
     birdsDataDic = dict(birdsData)
     return weatherStationDataDic | birdsDataDic
 
-def plot(xLabel : str, yLabel : str, title : str, xValues : list, data1 : list, data2 : list, size : int) -> None:
+def plot(xLabel : str, yLabel : str, title : str, xValues : list, data1 : list, data2 : list, size : int, legend : list) -> None:
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
     plt.title(title)
     plt.scatter(xValues, data1, s=size)
     plt.scatter(xValues, data2, s=size)
 
+    plt.legend(legend)
+
     plt.show()
 
 running = True
 while(running):
     print("Menu:")
-    print("\t--Plot (p)")
-    print("\t--Quit (q)")
+    print("  --Plot (p)")
+    print("  --Quit (q)")
     ans = input("--")
     if ans == "p":
         print("Menu:")
-        print("\t--Dinsdag (di)")
-        print("\t--Woensdag (woe)")
+        print("  --Dinsdag (di)")
+        print("  --Woensdag (woe)")
         ans = input("--")
         if ans == "di":
             #Wich bird and wich value
@@ -81,12 +83,13 @@ while(running):
                 xValues.append(i)
 
             #plotting
-            xLabel = "Measurement"
-            yLabel = "Temperature (°C)"
-            title = "Measured and accurate temperature"
+            xLabel = "Meting nummer"
+            yLabel = "Temperatuur (°C)"
+            title = "Gemeten & accurate temperatuur (di 29/09, 1900m)"
+            legend = ["Weerstation", "Vogels"]
             size = 10
-            
-            plot(xLabel, yLabel, title, xValues, data[SENSORW], data[SENSORB], size)
+
+            plot(xLabel, yLabel, title, xValues, data[SENSORW], data[SENSORB], size, legend)
         elif ans == "woe":
             #Wich bird and wich value
             BIRDFILE = "5"
@@ -108,12 +111,13 @@ while(running):
                 newData.append(_regressie[0] * HIKEDATA["TempBME"][i] + _regressie[1])
 
             #plotting
-            xLabel = "Measurement"
-            yLabel = "Temperature (°C)"
-            title = "Measured and calibrated temperature from the hike"
+            xLabel = "Meting nummer"
+            yLabel = "Temperatuur (°C)"
+            title = "Gemeten & gekalibreerde waardes tijdens de hike (woe 30/09, 2400m)"
             size = 1
+            legend = ["Gemeten data", "Gekalibreerde data"]
 
-            plot(xLabel, yLabel, title, xValues, HIKEDATA["TempBME"], newData, size)
+            plot(xLabel, yLabel, title, xValues, HIKEDATA["TempBME"], newData, size, legend)
         else:
             print("INVALID MENU OPTION!")
     elif ans == "q":
